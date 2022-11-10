@@ -1,0 +1,149 @@
+﻿1.Select StuId From tblStudent s1
+Where (Select Score From tblScore t1 Where t1.StuId=s1.stuId And t1.CourseId='001')>
+(Select Score From tblScore t2 Where t2.StuId=s1.stuId And t2.CourseId='002')
+
+2.Select StuId,Avg(Score) as AvgScore From tblScore
+Group By StuId
+Having Avg(Score)>60
+
+3.Select StuId,StuName,
+SelCourses=(Select Count(CourseId) From tblScore t1 Where t1.StuId=s1.StuId),
+SumScore=(Select Sum(Score) From tblScore t2 Where t2.StuId=s1.StuId)
+From tblStudent s1
+
+4.Select Count(*) From tblTeacher Where TeaName like '李%'
+
+5.Select StuId,StuName From tblStudent
+Where StuId Not In(
+Select StuID From tblScore sc
+Inner Join tblCourse cu ON sc.CourseId=cu.CourseId
+Inner Join tblTeacher tc ON cu.TeaId=tc.TeaId
+Where tc.TeaName='叶平')
+//一门都 没有选修叶平老师的课程(但凡是叶平老师的课程,都去除)
+//多对多表 & 多对多表 关联查询时,可以查询 not条件.
+
+6.Select StuId,StuName From tblStudent st
+Where   (Select Count(*) From tblScore s1
+          Where s1.StuId=st.StuId And s1.CourseId='001')>0 And
+        (Select Count(*) From tblScore s2
+          Where s2.StuId=st.StuId And s2.CourseId='002')>0
+
+7、查询学过“叶平”老师所教的所有课的同学的学号、姓名；
+7.Select StuId,StuName
+  From tblStudent st
+  Where not exists(
+    Select CourseID
+      From tblCourse cu
+      Inner Join tblTeacher tc On cu.TeaID=tc.TeaID
+      Where tc.TeaName='叶平' And
+            CourseID not in
+            (Select CourseID From tblScore Where StuID=st.StuID)
+  );
+//not exists(001号学生 没有选修叶平老师的课程)......则为假,不计算在内.
+//遍历学生表的学生, 其中没有选修叶平老师课程的反例,即可(全部课程都学过)
+//学生表中,什么都没选修的学生009
+
+
+8.Select StuId,StuName From tblStudent s1
+Where (Select Score From tblScore t1 Where t1.StuId=s1.stuId And t1.CourseId='001')>(Select Score From tblScore t2 Where t2.StuId=s1.stuId And t2.CourseId='002')
+
+9.Select StuId,StuName
+  From tblStudent st
+  Where StuId Not IN
+  (Select StuId From tblScore sc Where st.StuId=sc.StuId And Score>60)
+
+10.Select StuId,StuName
+  From tblStudent st
+  Where
+  (Select Count(*) From tblScore sc Where st.StuId=sc.StuId)<
+  (Select Count(*) From tblCourse)
+
+11-1.Select DistInct st.StuId,StuName From tblStudent st
+Inner Join tblScore sc ON st.StuId=sc.StuId
+Where sc.CourseId IN (Select CourseId From tblScore Where StuId='1001')
+11-2.Select StuId,StuName From tblStudent
+Where StuId In(Select Distinct StuId From tblScore Where CourseId In (Select CourseId From tblScore Where StuId='1001'))
+
+-------------------------------------------
+
+12.Select StuId,StuName From tblStudent
+Where StuId In(Select Distinct StuId From tblScore Where CourseId Not In (Select CourseId From tblScore Where StuId='1001')
+
+13.Update Sc Set Score=(Select Avg(Score) From tblScore s1 Where s1.CourseId=sc.CourseId)
+Where CourseId IN
+(Select CourseId From tblCourse cs INNER JOIN tblTeacher tc ON cs.TeaID=tc.TeaID WHERE TeaName ='叶平')
+
+14.Select StuID,StuName From tblStudent st
+Where StuId <> '1002'
+And
+Not Exists(Select * From tblScore sc Where sc.StuId=st.StuId And CourseId Not In (Select CourseId From tblScore Where StuId='1002'))
+And
+Not Exists(Select * From tblScore Where StuId='1002' And CourseId Not In (Select CourseId From tblScore sc Where sc.StuId=st.StuId))
+
+15.Delete From tblScore Where CourseId IN
+(Select CourseId From tblCourse cs INNER JOIN tblTeacher tc ON cs.TeaId=tc.TeaId Where tc.TeaName='叶平')
+
+16.Insert Into tblScore (StuId,CourseId,Score)
+Select StuId,'002',(Select Avg(Score) From tblScore Where CourseId='002') From tblScore Where
+StuId Not In (Select StuId From tblScore Where CourseId='003')
+
+17.Select StuId
+,数据库=(Select Score From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where CourseName='数据库' And sc.StuI
+D=st.StuId)
+,企业管理=(Select Score From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where CourseName='企业管理' And sc.StuID=st.StuId)
+,英语=(Select Score From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where CourseName='英语' And sc.StuID=st.StuId)
+,有效课程数=(Select Count(Score) From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where (CourseName='数据库' or CourseName='企业管理' or CourseName='英语') And sc.StuID=st.StuId)
+,有效平均分=(Select Avg(Score) From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where (CourseName='数据库' or CourseName='企业管理' or CourseName='英语') And sc.StuID=st.StuId)
+From tblStudent st
+Order by 有效平均分 Desc
+
+18.Select CourseId as 课程ID, 最高分=(Select Max(Score) From tblScore sc Where sc.CourseId=cs.CourseId ),
+最低分=(Select Min(Score) From tblScore sc Where sc.CourseId=cs.CourseId )
+From tblCourse cs
+
+19.Select 课程ID,平均分,及格率 From
+(Select CourseId as 课程ID, 平均分=(Select Avg(Score) From tblScore sc Where sc.CourseId=cs.CourseId ),
+及格率=Convert(varchar(10),((Select Count(*) From tblScore sc Where sc.CourseId=cs.CourseId And sc.Score>=60)*10000/(Select Count(*) From tblScore sc Where sc.CourseId=cs.CourseId))/100)+'%'
+From tblScore cs) as tmp
+Group by 课程ID,平均分,及格率
+Order by 平均分, Convert(float,substring(及格率,1,len(及格率)-1)) Desc
+
+20.Select 课程ID=sc.CourseId,课程名称=cs.CourseName,平均成绩=Avg(Score)
+,及格率 =Convert(varchar(10),((Select Count(Score) From tblScore Where CourseId=sc.CourseId And Score>=60)*10000/Count(Score))/100.0)+'%'
+From tblScore sc
+Inner Join tblCourse cs ON sc.CourseId=cs.CourseId
+Where sc.CourseId like '00[1234]'
+Group By sc.CourseId,cs.CourseName
+
+21.Select 课程ID=CourseId,课程名称=CourseName,授课教师=TeaName,平均成绩=(Select Avg(Score) From tblScore Where CourseId=cs.CourseId)
+From tblCourse cs
+Inner Join tblTeacher tc ON cs.TeaId=tc.TeaId
+Order by 平均成绩 Desc
+
+22.Select * From(Select Top 6 学生ID=StuId,学生姓名=StuName
+,企业管理=(Select Score From tblScore sc Inner Join tblCour
+se cs On sc.CourseId=cs.CourseId Where CourseName='企业管理' And sc.StuID=st.StuId)
+,马克思=(Select Score From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where CourseName='马克思' And sc.StuID=st.StuId)
+,UML=(Select Score From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where CourseName='UML' And sc.StuID=st.StuId)
+,数据库=(Select Score From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where CourseName='数据库' And sc.StuID=st.StuId)
+,平均成绩=(Select Avg(Score) From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where (CourseName='数据库' or CourseName='企业管理' or CourseName='UML'or CourseName='马克思') And sc.StuID=st.StuId)
+,排名=Row_Number() Over(Order by(Select Avg(Score) From tblScore sc Inner Join tblCourse cs On sc.CourseId=cs.CourseId Where (CourseName='数据库' or CourseName='企业管理' or CourseName='UML'or CourseName='马克思') And sc.StuID=st.StuId) DESC)
+From tblStudent st
+Order by 排名) as tmp
+Where 排名 between 3 And 6
+
+23.Select 课程ID=CourseId, 课程名称=CourseName
+,[100-85]=(Select Count(*) From tblScore sc Where CourseId=cs.CourseId And Score between 85 And 100)
+,[85-70]=(Select Count(*) From tblScore sc Where CourseId=cs.CourseId And Score between 70 And 84)
+,[70-60]=(Select Count(*) From tblScore sc Where CourseId=cs.CourseId And Score between 60 And 69)
+,[<60]=(Select Count(*) From tblScore sc Where CourseId=cs.CourseId And Score <60)
+From tblCourse cs
+
+24.Select 学号=st.StuId, 姓名=StuName,平均成绩=sc.AvgScore,名次=(Dense_Rank() Over(Order by sc.AvgScore Desc)) From tblStudent st
+Inner Join (Select StuId,Avg(Score) as AvgScore From tblScore Group by StuId) as sc On sc.StuId=st.StuId
+Order by 学号
+
+25.Select 学号=StuId,课程号=CourseId,分数=Score
+From
+(Select Row_Number() Over(order by CourseId,Score Desc) as i,* From tblScore) as tmp --得到一个临时的排名表,其中i表示编号
+Where i In(Select Top 3 i From (Select Row_Number() Over(order by CourseId,Score Desc) as i,* From tblScore) as t1 Where t1.CourseId=tmp.CourseId)

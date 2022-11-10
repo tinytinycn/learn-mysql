@@ -1,0 +1,139 @@
+﻿------------------------------------表结构--------------------------------------
+--学生表tblStudent（编号StuId、姓名StuName、年龄StuAge、性别StuSex）
+create table tblStudent(
+    StuId int primary key auto_increment,
+    StuName varchar(20) not null,
+     StuAge int,
+    StuSex char(1)
+    )engine=innodb charset=utf8;
+--成绩表tblScore（学生编号StuId、课程编号CourseId、成绩Score）
+create table tblScore(
+	StuId int not null,
+	CourseId int not null,
+	Score int not null,
+	foreign key(StuId) references tblStudent(StuId),
+	foreign key(StuId) references tblStudent(StuId)
+)engine=innodb charset=utf8;
+--课程表tblCourse（课程编号CourseId、课程名称CourseName、教师编号TeaId）
+create table tblCourse(
+	CoourseId int primary key auto_increment,
+	CourseName varchar(20) not null,
+	TeaId int ,
+	foreign key(TeaId) references tblTeacher(TeaId)
+)engine=innodb charset=utf8;
+--教师表tblTeacher（教师编号TeaId、姓名TeaName）
+create table tblTeacher(
+     TeaId int primary key auto_increment,
+     TeaName varchar(20) not null
+     )engine=innodb charset=utf8;
+------------------------------------------------------------------------------
+--问题：
+
+--学生表tblStudent（编号StuId、姓名StuName、年龄StuAge、性别StuSex）    一对一
+--成绩表tblScore（学生编号StuId、课程编号CourseId、成绩Score）          多对多
+--课程表tblCourse（课程编号CourseId、课程名称CourseName、教师编号TeaId）一对多
+--教师表tblTeacher（教师编号TeaId、姓名TeaName）                        一对一
+
+--1、查询“001”课程比“002”课程成绩高的所有学生的学号；
+	-查询001课程的成绩：select Score from tblScore where CourseId='001'; t1表
+	-查询002课程的成绩：select Score from tblScore where CourseId='002'; t2表
+	-select s1.StuId from tblStudent s1 where
+    (select Score from tblScore t1 where CourseId='001' and t1.StuId=s1.StuId)>
+    (select Score from tblScore t2 where CourseId='002' and t2.StuId=s1.StuId);
+
+
+--2、查询平均成绩大于60分的同学的学号和平均成绩；
+	--查询出平均成绩为60的学生id
+	select StuId,avg(Soure) from tblScore group by Stuid having avg(Score)>60;
+
+--3、查询所有同学的学号、姓名、选课数(count)、总成绩(sum)；
+	select  StuId,
+        StuName,
+        SelCourses=(select count(CourseId) from tblScore t1 where t1.StuId=s1.StuId),
+        SumScores=(select sum(Score) from tblScore t2 where t2.StuId=s1.StuId) 
+    from tblStudent s1;
+
+--4、查询姓“李”的老师的个数；
+	select count(*) from tblTeacher where TeaName like '李%';
+
+--5、查询没学过“叶平”老师课的同学的学号、姓名；(一门都没有学过)
+	select StuId,StuName from tblStudent 
+		where StuId not in (
+			select StuId from tblScore t1 
+				inner join tblCourse t2 on t1.CourseId=t2.CourseId
+				inner join tblTeacher t3 on t2.TeaId=t3.TeaId 
+				where t3.TeaName='叶平'
+		);
+	内连接形成的笛卡儿积;
+
+--6、查询学过“001”并且也学过编号“002”课程的同学的学号、姓名；
+	select StuId,StuName from tblStudent s1
+		where (select count(*) from tblScore t1 where s1.StuId=t1.StuId and t1.CourseId=001)>0
+		 and (select count(*) from tblScore t2 where s1.StuId=t2.StuId and t2.CourseId=002)>0;
+
+--7、查询学过“叶平”老师所教的所有课的同学的学号、姓名；(全部课程都学过)
+	select StuId,StuName from tblStudent s1
+		where not exists(
+			select CourseId from tblCourse t2 
+				inner join tblTeacher t3 on t2.TeaId=t3.TeaId 
+				where t3.TeaName='叶平' 
+				and CourseId not in (select CourseId from tblScore t1 where t1.StuId=s1.StuId)
+		);
+	not exists(叶平老师的CourseId不在某个学生选的CourseId中);
+	not exists(某个学生没选叶平老师的CourseId);//即全部选了叶平老师的CourseId
+
+--8、查询课程编号“002”的成绩比课程编号“001”课程低的所有同学的学号、姓名；
+	select StuId,StuName from tblStudent s1 
+		where 
+		(select Score from tblScore t1 where t1.StuId=s1.StuId and t1.CourseId=002)
+		<
+		(select Score from tblScore t2 where t2.StuId=s1.StuId and t1.CourseId=001);
+
+--9、查询所有课程成绩小于60分的同学的学号、姓名；
+	select StuId,StuName from tblStudent s1 
+		where StuId not in (
+			select StuId from tblScore t1 where t1.StuId=s1.StuId and t1.Score>60
+		);
+
+--10、查询没有学全所有课的同学的学号、姓名；
+	select StuId,StuName from tblStudent s1 
+		where 
+		(select count(*) from tblScore t1 where t1.StuId=s1.StuId)
+		<
+		(select count(*) from tblCourse);
+
+--11、查询至少有一门课与学号为“1001”的同学所学相同的同学的学号和姓名；
+	select StuId,StuName from tblStudent s1 
+		inner join tblScore t2 on t2.StuId=s1.StuId
+		where t2.CourseId in (
+			select distinct CourseId from tblScore t1 
+			inner join tblCourse t2 on t1.CourseId=t2.CourseId 
+			where t1.StuId=1001 
+		);//??不确定
+	select s1.StuId,s1.StuName from tblStudent s1 
+		inner join tblScore t1 on s1.StuId=t1.StuId
+		where t1.CourseId in (
+			select CourseId from tblScore where StuId=1001
+		);
+	select StuId,StuName from tblStudent 
+		where StuId in (
+			select distinct StuId from tblScore 
+				where CourseId in (select CourseId from tblScore where StuId=1001)
+		);
+
+------运用连接查询
+------嵌套子查询
+--12、查询至少学过学号为“1001”同学所有课程的其他同学学号和姓名；
+--13、把“SC”表中“叶平”老师教的课的成绩都更改为此课程的平均成绩；
+--14、查询和“1002”号的同学学习的课程完全相同的其他同学学号和姓名；
+--15、删除学习“叶平”老师课的SC表记录；
+--16、向SC表中插入一些记录，这些记录要求符合以下条件：没有上过编号“003”课程的同学学号、'002'号课的平均成绩；
+--17、按平均成绩从高到低显示所有学生的“数据库”、“企业管理”、“英语”三门的课程成绩，按如下形式显示： 学生ID,,数据库,企业管理,英语,有效课程数,有效平均分
+--18、查询各科成绩最高和最低的分：以如下形式显示：课程ID，最高分，最低分
+--19、按各科平均成绩从低到高和及格率的百分数从高到低顺序 (百分数后如何格式化为两位小数??)
+--20、查询如下课程平均成绩和及格率的百分数(用"1行"显示): 企业管理（001），马克思（002），OO&UML （003），数据库（004）
+--21、查询不同老师所教不同课程平均分从高到低显示
+--22、查询如下课程成绩第 3 名到第 6 名的学生成绩单：企业管理（001），马克思（002），UML （003），数据库（004） 格式：[学生ID],[学生姓名],企业管理,马克思,UML,数据库,平均成绩
+--23、统计列印各科成绩,各分数段人数:课程ID,课程名称,[100-85],[85-70],[70-60],[ <60]
+--24、查询学生平均成绩及其名次
+--25、查询各科成绩前三名的记录:(不考虑成绩并列情况)
